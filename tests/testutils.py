@@ -61,7 +61,7 @@ def initialize_table_config(ctrl, logger):
     """
     logger.info("Initializing all table configs")
     request = message.table_mod()  
-    request.config = ofp.OFPTC_TABLE_MISS_CONTROLLER
+    request.config = ofp.OFPTC_TABLE_MISS_CONTINUE
     rv = 0
     for table_id in [0, 1, 2, 3, 4, 5, 6, 7]:
         request.table_id = table_id
@@ -88,6 +88,7 @@ def delete_all_flows_one_table(ctrl, logger, table_id=0):
     """
     logger.info("Deleting all flows on table ID: " + str(table_id))
     msg = message.flow_mod()
+    msg.match_tlvs = [0,0,0,0]
     msg.out_port = ofp.OFPP_ANY
     msg.out_group = ofp.OFPG_ANY
     msg.command = ofp.OFPFC_DELETE
@@ -130,9 +131,9 @@ def simple_tcp_packet(dl_dst='00:01:02:03:04:05',
                       ip_dst='192.168.0.2',
                       ip_tos=0,
                       ip_ttl=64,
-                      tcp_sport=1234,
-                      tcp_dport=80,
-                      payload_len = 46):
+                      tcp_src=1234,
+                      tcp_dst=1000,
+                      pktlen = 100):
     pkt = Ether(dst=dl_dst, src=dl_src)
 
     vlans_num = 0
@@ -173,9 +174,10 @@ def simple_tcp_packet(dl_dst='00:01:02:03:04:05',
         mplss_num+=1
 
     pkt = pkt / IP(src=ip_src, dst=ip_dst, tos=ip_tos, ttl=ip_ttl) \
-              / TCP(sport=tcp_sport, dport=tcp_dport)
+              / TCP(sport=tcp_src, dport=tcp_dst)
     
-    pkt = pkt / ("D" * payload_len)
+    if pktlen > len(pkt) :
+        pkt = pkt/("D" * (pktlen - len(pkt)))
 
     return pkt
 
@@ -248,8 +250,8 @@ def simple_ipv6_packet(pktlen=100,
                       ip_src='fe80::2420:52ff:fe8f:5189',
                       ip_dst='fe80::2420:52ff:fe8f:5190',
                       ip_tos=0,
-                      tcp_sport=0,
-                      tcp_dport=0, 
+                      tcp_src=0,
+                      tcp_dst=0, 
                       EH = False, 
                       EHpkt = IPv6ExtHdrDestOpt()
                       ):
@@ -267,7 +269,7 @@ def simple_ipv6_packet(pktlen=100,
     @param ip_src IPv6 source
     @param ip_dst IPv6 destination
     @param ip_tos IP ToS
-    @param tcp_dport TCP destination port
+    @param tcp_dst TCP destination port
     @param ip_sport TCP source port
 
     """
@@ -285,8 +287,8 @@ def simple_ipv6_packet(pktlen=100,
     if EH:
         pkt = pkt / EHpkt
 
-    if (tcp_sport >0 and tcp_dport >0):
-        pkt = pkt / TCP(sport=tcp_sport, dport=tcp_dport)
+    if (tcp_src >0 and tcp_dst >0):
+        pkt = pkt / TCP(sport=tcp_src, dport=tcp_dst)
 
     if pktlen > len(pkt) :
         pkt = pkt/("D" * (pktlen - len(pkt)))
@@ -303,8 +305,8 @@ def simple_icmpv6_packet(pktlen=100,
                       ip_src='fe80::2420:52ff:fe8f:5189',
                       ip_dst='fe80::2420:52ff:fe8f:5190',
                       ip_tos=0,
-                      tcp_sport=0,
-                      tcp_dport=0, 
+                      tcp_src=0,
+                      tcp_dst=0, 
                       EH = False, 
                       EHpkt = IPv6ExtHdrDestOpt(),
                       route_adv = False,
@@ -324,7 +326,7 @@ def simple_icmpv6_packet(pktlen=100,
     @param ip_src IPv6 source
     @param ip_dst IPv6 destination
     @param ip_tos IP ToS
-    @param tcp_dport TCP destination port
+    @param tcp_dst TCP destination port
     @param ip_sport TCP source port
     
     """
@@ -352,8 +354,8 @@ def simple_icmpv6_packet(pktlen=100,
     else :
         pkt = pkt/ \
             ICMPv6EchoRequest()
-    if (tcp_sport >0 and tcp_dport >0):
-        pkt = pkt / TCP(sport=tcp_sport, dport=tcp_dport)
+    if (tcp_src >0 and tcp_dst >0):
+        pkt = pkt / TCP(sport=tcp_src, dport=tcp_dst)
 
     if pktlen > len(pkt) :
         pkt = pkt/("D" * (pktlen - len(pkt)))
@@ -1040,18 +1042,19 @@ def action_generate(parent, field_to_mod, mod_field_vals):
     @param field_to_mod The field to modify as a string name
     @param mod_field_vals Hash of values to use for modified values
     """
-
     act = None
 
     if field_to_mod in ['pktlen']:
         return None
 
     if field_to_mod == 'dl_dst':
-        act = action.action_set_dl_dst()
-        act.dl_addr = parse.parse_mac(mod_field_vals['dl_dst'])
+        act = action.action_set_field()
+        eth_dst = oxm_field.eth_dst(parse.parse_mac(mod_field_vals['dl_dst']))
+        act.field = eth_dst
     elif field_to_mod == 'dl_src':
-        act = action.action_set_dl_src()
-        act.dl_addr = parse.parse_mac(mod_field_vals['dl_src'])
+        act = action.action_set_field()
+        eth_src = oxm_field.eth_src(parse.parse_mac(mod_field_vals['dl_src']))
+        act.field = eth_src
     elif field_to_mod == 'vlan_tags':
         if len(mod_field_vals['vlan_tags']):
             act = action.action_pop_vlan()
@@ -1068,25 +1071,35 @@ def action_generate(parent, field_to_mod, mod_field_vals):
 #    elif field_to_mod == 'dl_vlan_pcp':
 #        act = action.action_set_vlan_pcp()
 #        act.vlan_pcp = mod_field_vals['dl_vlan_pcp']
-    elif field_to_mod == 'ip_src':
-        act = action.action_set_nw_src()
-        act.nw_addr = parse.parse_ip(mod_field_vals['ip_src'])
-    elif field_to_mod == 'ip_dst':
-        act = action.action_set_nw_dst()
-        act.nw_addr = parse.parse_ip(mod_field_vals['ip_dst'])
-    elif field_to_mod == 'ip_tos':
-        act = action.action_set_nw_tos()
-        act.nw_tos = mod_field_vals['ip_tos']
-    elif field_to_mod == 'tcp_sport':
-        act = action.action_set_tp_src()
-        act.tp_port = mod_field_vals['tcp_sport']
-    elif field_to_mod == 'tcp_dport':
-        act = action.action_set_tp_dst()
-        act.tp_port = mod_field_vals['tcp_dport']
+    elif field_to_mod == 'ipv4_src':
+        act = action.action_set_field()
+        ip_src = oxm_field.ipv4_src(ipaddr.IPv4Address(mod_field_vals['ipv4_src']))
+        act.field = ip_src
+    elif field_to_mod == 'ipv4_dst':
+        act = action.action_set_field()
+        ip_dst = oxm_field.ipv4_src(ipaddr.IPv4Address(mod_field_vals['ipv4_dst']))
+        act.field = ip_dst
+    elif field_to_mod == 'ip_dscp':
+        act = action.action_set_field()
+        ip_tos = oxm_field.ip_dscp(mod_field_vals['ip_dscp'])
+        act.field = ip_tos
+    elif field_to_mod == 'ip_ecn':
+        act = action.action_set_field()
+        ip_tos = oxm_field.ip_ecn(mod_field_vals['ip_ecn'])
+        act.field = ip_tos
+    elif field_to_mod == 'tcp_src':
+        act = action.action_set_field()
+        tcp_src = oxm_field.tcp_src(mod_field_vals['tcp_src'])
+        act.field = tcp_src
+    elif field_to_mod == 'tcp_dst':
+        act = action.action_set_field()
+        tcp_dst = oxm_field.tcp_src(mod_field_vals['tcp_dst'])
+        act.field = tcp_dst
     else:
         parent.assertTrue(0, "Unknown field to modify: " + str(field_to_mod))
 
     return act
+    
 
 def pkt_action_setup(parent, start_field_vals={}, mod_field_vals={}, 
                      mod_fields={}, check_test_params=False):
@@ -1115,8 +1128,8 @@ def pkt_action_setup(parent, start_field_vals={}, mod_field_vals={},
     base_pkt_params['ip_src'] = '192.168.0.1'
     base_pkt_params['ip_dst'] = '192.168.0.2'
     base_pkt_params['ip_tos'] = 0
-    base_pkt_params['tcp_sport'] = 1234
-    base_pkt_params['tcp_dport'] = 80
+    base_pkt_params['tcp_src'] = 1234
+    base_pkt_params['tcp_dst'] = 80
     for keyname in start_field_vals.keys():
         base_pkt_params[keyname] = start_field_vals[keyname]
 
@@ -1129,8 +1142,8 @@ def pkt_action_setup(parent, start_field_vals={}, mod_field_vals={},
     mod_pkt_params['ip_src'] = '10.20.30.40'
     mod_pkt_params['ip_dst'] = '50.60.70.80'
     mod_pkt_params['ip_tos'] = 0xf0
-    mod_pkt_params['tcp_sport'] = 4321
-    mod_pkt_params['tcp_dport'] = 8765
+    mod_pkt_params['tcp_src'] = 4321
+    mod_pkt_params['tcp_dst'] = 8765
     for keyname in mod_field_vals.keys():
         mod_pkt_params[keyname] = mod_field_vals[keyname]
 
@@ -1233,8 +1246,8 @@ def simple_tcp_packet_w_mpls(
                       ip_dst='192.168.0.2',
                       ip_tos=0,
                       ip_ttl=192,
-                      tcp_sport=1234,
-                      tcp_dport=80
+                      tcp_src=1234,
+                      tcp_dst=80
                       ):
     """
     Return a simple dataplane TCP packet w/wo MPLS tags
@@ -1258,7 +1271,7 @@ def simple_tcp_packet_w_mpls(
     @param ip_src IP source
     @param ip_dst IP destination
     @param ip_tos IP ToS
-    @param tcp_dport TCP destination port
+    @param tcp_dst TCP destination port
     @param ip_sport TCP source port
 
     Generates a simple MPLS/IP/TCP request.  Users
@@ -1284,8 +1297,8 @@ def simple_tcp_packet_w_mpls(
                             ip_dst=ip_dst,
                             ip_tos=ip_tos,  
                             ip_ttl=ip_ttl,
-                            tcp_sport=tcp_sport,
-                            tcp_dport=tcp_dport)
+                            tcp_src=tcp_src,
+                            tcp_dst=tcp_dst)
     return pkt
     
 def flow_match_test_port_pair_mpls(parent, ing_port, egr_port, wildcards=0,

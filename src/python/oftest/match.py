@@ -13,6 +13,10 @@ class oxm_tlv:
         self.length = length
         self.value = value
         self.mask = mask
+
+    def __eq__(self, other):
+        return (self.field == other.field and self.class_ == other.class_)
+
     
     def pack(self, assertstruct=True):
         

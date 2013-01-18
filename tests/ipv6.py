@@ -298,7 +298,7 @@ class MatchIPv6TCP(basic.SimpleDataPlane):
         self.assertTrue(rv != -1, "Failed to send test flow")
 
         #Send packet
-        pkt = testutils.simple_ipv6_packet(tcp_sport=80, tcp_dport=8080) 
+        pkt = testutils.simple_ipv6_packet(tcp_src=80, tcp_dst=8080) 
 
         ipv6_logger.info("Sending IPv6 packet to " + str(ing_port))
         ipv6_logger.debug("Data: " + str(pkt).encode('hex'))
@@ -306,7 +306,7 @@ class MatchIPv6TCP(basic.SimpleDataPlane):
         self.dataplane.send(ing_port, str(pkt))
 
         #Receive packet
-        exp_pkt = testutils.simple_ipv6_packet(tcp_sport=80, tcp_dport=8080) 
+        exp_pkt = testutils.simple_ipv6_packet(tcp_src=80, tcp_dst=8080) 
 
         testutils.receive_pkt_verify(self, egr_port, exp_pkt)
 

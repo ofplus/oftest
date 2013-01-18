@@ -1004,6 +1004,7 @@ class flow_mod(ofp_flow_mod):
         self.header.length = len(self)
         if not len(self.match_fields):
             tlv_pad = oxm_tlv(0,0,0,0,0,0)
+            self.match.length += 4
             self.match_fields.tlvs.append(tlv_pad)
         else:
             if len(self.match_fields) > 4:
@@ -2858,7 +2859,7 @@ class flow_stats_entry(ofp_flow_stats):
         padding = roundup((OFP_FLOW_STATS_BYTES -4) + self.match.length,8) - ((OFP_FLOW_STATS_BYTES - 4) + self.match.length)
         if padding:
             binary_string = binary_string[padding:]
-        ai_len = self.length - roundup(OFP_FLOW_STATS_BYTES + len(self.match_fields),8)
+        ai_len = self.length - roundup(OFP_FLOW_STATS_BYTES + self.match.length,8)
         if ai_len < 0:
             print("ERROR: flow_stats_entry unpack length too small",
                   self.length)
@@ -2866,7 +2867,7 @@ class flow_stats_entry(ofp_flow_stats):
         return binary_string
 
     def __len__(self):
-        return roundup(OFP_FLOW_STATS_BYTES + len(self.match_fields),8) + len(self.instructions)
+        return roundup(OFP_FLOW_STATS_BYTES + self.match.length,8) + len(self.instructions)
 
     def show(self, prefix=''):
         outstr = prefix + "flow_stats_entry\n"

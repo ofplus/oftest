@@ -99,7 +99,7 @@ def create_action(**kwargs):
         act.group_id = kwargs.get('group_id', 0)
         return act
     if a == ofp.OFPAT_SET_FIELD:
-        port = kwargs.get('tcp_sport', 0)
+        port = kwargs.get('tcp_src', 0)
         field_2b_set = match.tcp_src(port)
         act = action.action_set_field()
         act.field = field_2b_set
@@ -691,15 +691,15 @@ class GroupProcSimple(GroupTest):
         group_add_msg = \
         create_group_mod_msg(ofp.OFPGC_ADD, ofp.OFPGT_ALL, group_id = 1, buckets = [
             create_bucket(0, 0, 0, [
-                create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 2000),
+                create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 2000),
                 create_action(action = ofp.OFPAT_OUTPUT, port = 2)
             ])
         ])
 
         self.send_ctrl_exp_noerror(group_add_msg, 'group add')
 
-        packet_in  = testutils.simple_tcp_packet(tcp_sport=1000)
-        packet_out = testutils.simple_tcp_packet(tcp_sport=2000)
+        packet_in  = testutils.simple_tcp_packet(tcp_src=1000)
+        packet_out = testutils.simple_tcp_packet(tcp_src=2000)
         
         flow_add_msg = \
         testutils.flow_msg_create(self,packet_in,ing_port = 1,action_list = [
@@ -726,7 +726,7 @@ class GroupProcMod(GroupTest):
         group_add_msg = \
         create_group_mod_msg(ofp.OFPGC_ADD, ofp.OFPGT_ALL, group_id = 1, buckets = [
             create_bucket(0, 0, 0, [
-                create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 2000),
+                create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 2000),
                 create_action(action = ofp.OFPAT_OUTPUT, port = 2)
             ])
         ])
@@ -736,7 +736,7 @@ class GroupProcMod(GroupTest):
         group_mod_msg = \
         create_group_mod_msg(ofp.OFPGC_MODIFY, ofp.OFPGT_ALL, group_id = 1, buckets = [
             create_bucket(0, 0, 0, [
-                create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 3000),
+                create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 3000),
                 create_action(action = ofp.OFPAT_OUTPUT, port = 2)
             ])
         ])
@@ -744,8 +744,8 @@ class GroupProcMod(GroupTest):
         self.send_ctrl_exp_noerror(group_mod_msg, 'group mod')
 
 
-        packet_in  = testutils.simple_tcp_packet(tcp_sport=1000)
-        packet_out = testutils.simple_tcp_packet(tcp_sport=3000)
+        packet_in  = testutils.simple_tcp_packet(tcp_src=1000)
+        packet_out = testutils.simple_tcp_packet(tcp_src=3000)
         
         flow_add_msg = \
         testutils.flow_msg_create(self,packet_in,ing_port = 1,action_list = [
@@ -771,7 +771,7 @@ class GroupProcChain(GroupTest):
         group_add_msg2 = \
         create_group_mod_msg(ofp.OFPGC_ADD, ofp.OFPGT_ALL, group_id = 2, buckets = [
             create_bucket(0, 0, 0, [
-                create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 2000),
+                create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 2000),
                 create_action(action = ofp.OFPAT_OUTPUT, port = 2)
             ])
         ])
@@ -787,8 +787,8 @@ class GroupProcChain(GroupTest):
 
         self.send_ctrl_exp_noerror(group_add_msg1, 'group add')
 
-        packet_in  = testutils.simple_tcp_packet(tcp_sport=1000)
-        packet_out = testutils.simple_tcp_packet(tcp_sport=2000)
+        packet_in  = testutils.simple_tcp_packet(tcp_src=1000)
+        packet_out = testutils.simple_tcp_packet(tcp_src=2000)
         
         flow_add_msg = \
         testutils.flow_msg_create(self,packet_in,ing_port = 1,action_list = [
@@ -818,25 +818,25 @@ class GroupProcAll(GroupTest):
         group_add_msg = \
         create_group_mod_msg(ofp.OFPGC_ADD, ofp.OFPGT_ALL, group_id = 1, buckets = [
             create_bucket(0, 0, 0, [
-                create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 2000),
+                create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 2000),
                 create_action(action = ofp.OFPAT_OUTPUT, port = 2)
             ]),
             create_bucket(0, 0, 0, [
-                create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 3000),
+                create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 3000),
                 create_action(action = ofp.OFPAT_OUTPUT, port = 3)
             ]),
             create_bucket(0, 0, 0, [
-                create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 4000),
+                create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 4000),
                 create_action(action = ofp.OFPAT_OUTPUT, port = 4)
             ])
         ])
 
         self.send_ctrl_exp_noerror(group_add_msg, 'group add')
 
-        packet_in  = testutils.simple_tcp_packet(tcp_sport=1000)
-        packet_out1 = testutils.simple_tcp_packet(tcp_sport=2000)
-        packet_out2 = testutils.simple_tcp_packet(tcp_sport=3000)
-        packet_out3 = testutils.simple_tcp_packet(tcp_sport=4000)
+        packet_in  = testutils.simple_tcp_packet(tcp_src=1000)
+        packet_out1 = testutils.simple_tcp_packet(tcp_src=2000)
+        packet_out2 = testutils.simple_tcp_packet(tcp_src=3000)
+        packet_out3 = testutils.simple_tcp_packet(tcp_src=4000)
         
         flow_add_msg = \
         testutils.flow_msg_create(self,packet_in,ing_port = 1,action_list = [
@@ -864,7 +864,7 @@ class GroupProcAllChain(GroupTest):
         group_add_msg2 = \
         create_group_mod_msg(ofp.OFPGC_ADD, ofp.OFPGT_ALL, group_id = 2, buckets = [
             create_bucket(0, 0, 0, [
-                create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 2000),
+                create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 2000),
                 create_action(action = ofp.OFPAT_OUTPUT, port = 2)
             ])
         ])
@@ -874,11 +874,11 @@ class GroupProcAllChain(GroupTest):
         group_add_msg3 = \
         create_group_mod_msg(ofp.OFPGC_ADD, ofp.OFPGT_ALL, group_id = 3, buckets = [
             create_bucket(0, 0, 0, [
-                create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 3000),
+                create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 3000),
                 create_action(action = ofp.OFPAT_OUTPUT, port = 3)
             ]),
             create_bucket(0, 0, 0, [
-                create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 4000),
+                create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 4000),
                 create_action(action = ofp.OFPAT_OUTPUT, port = 4)
             ])
         ])
@@ -897,10 +897,10 @@ class GroupProcAllChain(GroupTest):
 
         self.send_ctrl_exp_noerror(group_add_msg1, 'group add 1')
 
-        packet_in  = testutils.simple_tcp_packet(tcp_sport=1000)
-        packet_out1 = testutils.simple_tcp_packet(tcp_sport=2000)
-        packet_out2 = testutils.simple_tcp_packet(tcp_sport=3000)
-        packet_out3 = testutils.simple_tcp_packet(tcp_sport=4000)
+        packet_in  = testutils.simple_tcp_packet(tcp_src=1000)
+        packet_out1 = testutils.simple_tcp_packet(tcp_src=2000)
+        packet_out2 = testutils.simple_tcp_packet(tcp_src=3000)
+        packet_out3 = testutils.simple_tcp_packet(tcp_src=4000)
         
         flow_add_msg = \
         testutils.flow_msg_create(self,packet_in,ing_port = 1,action_list = [
@@ -929,15 +929,15 @@ class GroupProcIndirect(GroupTest):
         group_add_msg = \
         create_group_mod_msg(ofp.OFPGC_ADD, ofp.OFPGT_INDIRECT, group_id = 1, buckets = [
             create_bucket(0, 0, 0, [
-                create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 2000),
+                create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 2000),
                 create_action(action = ofp.OFPAT_OUTPUT, port = 2)
             ])
         ])
 
         self.send_ctrl_exp_noerror(group_add_msg, 'group add')
 
-        packet_in  = testutils.simple_tcp_packet(tcp_sport=1000)
-        packet_out = testutils.simple_tcp_packet(tcp_sport=2000)
+        packet_in  = testutils.simple_tcp_packet(tcp_src=1000)
+        packet_out = testutils.simple_tcp_packet(tcp_src=2000)
         
         flow_add_msg = \
         testutils.flow_msg_create(self,packet_in,ing_port = 1,action_list = [
@@ -964,25 +964,25 @@ class GroupProcSelect(GroupTest):
         group_add_msg = \
         create_group_mod_msg(ofp.OFPGC_ADD, ofp.OFPGT_SELECT, group_id = 1, buckets = [
             create_bucket(1, 0, 0, [
-                create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 2000),
+                create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 2000),
                 create_action(action = ofp.OFPAT_OUTPUT, port = 2)
             ]),
             create_bucket(1, 0, 0, [
-                create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 3000),
+                create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 3000),
                 create_action(action = ofp.OFPAT_OUTPUT, port = 3)
             ]),
             create_bucket(1, 0, 0, [
-                create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 4000),
+                create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 4000),
                 create_action(action = ofp.OFPAT_OUTPUT, port = 4)
             ])
         ])
 
         self.send_ctrl_exp_noerror(group_add_msg, 'group add')
 
-        packet_in  = testutils.simple_tcp_packet(tcp_sport=1000)
-        packet_out1 = testutils.simple_tcp_packet(tcp_sport=2000)
-        packet_out2 = testutils.simple_tcp_packet(tcp_sport=3000)
-        packet_out3 = testutils.simple_tcp_packet(tcp_sport=4000)
+        packet_in  = testutils.simple_tcp_packet(tcp_src=1000)
+        packet_out1 = testutils.simple_tcp_packet(tcp_src=2000)
+        packet_out2 = testutils.simple_tcp_packet(tcp_src=3000)
+        packet_out3 = testutils.simple_tcp_packet(tcp_src=4000)
         
         flow_add_msg = \
         testutils.flow_msg_create(self,packet_in,ing_port = 1,action_list = [
@@ -1031,18 +1031,18 @@ class GroupStats(GroupTest):
         group_add_msg = \
         create_group_mod_msg(ofp.OFPGC_ADD, ofp.OFPGT_ALL, group_id = 10, buckets = [
             create_bucket(0, 0, 0, [
-                create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 2000),
+                create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 2000),
                 create_action(action = ofp.OFPAT_OUTPUT, port = 2)
             ]),
             create_bucket(0, 0, 0, [
-                create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 3000),
+                create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 3000),
                 create_action(action = ofp.OFPAT_OUTPUT, port = 3)
             ])
         ])
 
         self.send_ctrl_exp_noerror(group_add_msg, 'group add')
 
-        packet_in  = testutils.simple_tcp_packet(tcp_sport=1000)
+        packet_in  = testutils.simple_tcp_packet(tcp_src=1000)
         
         flow_add_msg = \
         testutils.flow_msg_create(self,packet_in,ing_port = 1,action_list = [
@@ -1087,11 +1087,11 @@ class GroupStatsAll(GroupTest):
         group_add_msg1 = \
         create_group_mod_msg(ofp.OFPGC_ADD, ofp.OFPGT_ALL, group_id = 10, buckets = [
             create_bucket(0, 0, 0, [
-                create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 2000),
+                create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 2000),
                 create_action(action = ofp.OFPAT_OUTPUT, port = 2)
             ]),
             create_bucket(0, 0, 0, [
-                create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 3000),
+                create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 3000),
                 create_action(action = ofp.OFPAT_OUTPUT, port = 3)
             ])
         ])
@@ -1101,18 +1101,18 @@ class GroupStatsAll(GroupTest):
         group_add_msg2 = \
         create_group_mod_msg(ofp.OFPGC_ADD, ofp.OFPGT_ALL, group_id = 20, buckets = [
             create_bucket(0, 0, 0, [
-                create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 2000),
+                create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 2000),
                 create_action(action = ofp.OFPAT_OUTPUT, port = 2)
             ]),
             create_bucket(0, 0, 0, [
-                create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 3000),
+                create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 3000),
                 create_action(action = ofp.OFPAT_OUTPUT, port = 3)
             ])
         ])
 
         self.send_ctrl_exp_noerror(group_add_msg2, 'group add 2')
 
-        packet_in  = testutils.simple_tcp_packet(tcp_sport=1000)
+        packet_in  = testutils.simple_tcp_packet(tcp_src=1000)
         
         flow_add_msg1 = \
         testutils.flow_msg_create(self,packet_in,ing_port = 1,action_list = [
@@ -1165,15 +1165,15 @@ class GroupDescStats(GroupTest):
         self.clear_switch()
 
         b1 = create_bucket(0, 0, 0, [
-                 create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 2000),
+                 create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 2000),
                  create_action(action = ofp.OFPAT_OUTPUT, port = 2)
             ])
         b2 =  create_bucket(0, 0, 0, [
-                  create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 3000),
+                  create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 3000),
                   create_action(action = ofp.OFPAT_OUTPUT, port = 3)
             ])
         b3 = create_bucket(0, 0, 0, [
-                 create_action(action = ofp.OFPAT_SET_FIELD, tcp_sport = 4000),
+                 create_action(action = ofp.OFPAT_SET_FIELD, tcp_src = 4000),
                  create_action(action = ofp.OFPAT_OUTPUT, port = 4)
             ])
 
@@ -1236,7 +1236,7 @@ class GroupFlowSelect(GroupTest):
 
         self.send_ctrl_exp_noerror(group_add_msg2, 'group add 2')
 
-        packet_in1 = testutils.simple_tcp_packet(tcp_sport=1000)
+        packet_in1 = testutils.simple_tcp_packet(tcp_src=1000)
         
         flow_add_msg1 = \
         testutils.flow_msg_create(self,packet_in1,ing_port = 1,action_list = [
@@ -1246,7 +1246,7 @@ class GroupFlowSelect(GroupTest):
 
         self.send_ctrl_exp_noerror(flow_add_msg1, 'flow add 1')
 
-        packet_in2 = testutils.simple_tcp_packet(tcp_sport=2000)
+        packet_in2 = testutils.simple_tcp_packet(tcp_src=2000)
 
         flow_add_msg2 = \
         testutils.flow_msg_create(self,packet_in2,ing_port = 1,action_list = [
@@ -1256,7 +1256,7 @@ class GroupFlowSelect(GroupTest):
 
         self.send_ctrl_exp_noerror(flow_add_msg2, 'flow add 2')
 
-        packet_in3 = testutils.simple_tcp_packet(tcp_sport=3000)
+        packet_in3 = testutils.simple_tcp_packet(tcp_src=3000)
 
         flow_add_msg3 = \
         testutils.flow_msg_create(self,packet_in3,ing_port = 1,action_list = [
@@ -1266,7 +1266,7 @@ class GroupFlowSelect(GroupTest):
 
         self.send_ctrl_exp_noerror(flow_add_msg3, 'flow add 3')
 
-        packet_in4 = testutils.simple_tcp_packet(tcp_sport=4000)
+        packet_in4 = testutils.simple_tcp_packet(tcp_src=4000)
 
         flow_add_msg4 = \
         testutils.flow_msg_create(self,packet_in4,ing_port = 1,action_list = [
@@ -1305,7 +1305,7 @@ class GroupFlowSelectAll(GroupTest):
 
         self.send_ctrl_exp_noerror(group_add_msg2, 'group add 2')
 
-        packet_in1 = testutils.simple_tcp_packet(tcp_sport=1000)
+        packet_in1 = testutils.simple_tcp_packet(tcp_src=1000)
         
         flow_add_msg1 = \
         testutils.flow_msg_create(self,packet_in1,ing_port = 1,action_list = [
@@ -1315,7 +1315,7 @@ class GroupFlowSelectAll(GroupTest):
 
         self.send_ctrl_exp_noerror(flow_add_msg1, 'flow add 1')
 
-        packet_in2 = testutils.simple_tcp_packet(tcp_sport=2000)
+        packet_in2 = testutils.simple_tcp_packet(tcp_src=2000)
 
         flow_add_msg2 = \
         testutils.flow_msg_create(self,packet_in2,ing_port = 1,action_list = [
@@ -1325,7 +1325,7 @@ class GroupFlowSelectAll(GroupTest):
 
         self.send_ctrl_exp_noerror(flow_add_msg2, 'flow add 2')
 
-        packet_in3 = testutils.simple_tcp_packet(tcp_sport=3000)
+        packet_in3 = testutils.simple_tcp_packet(tcp_src=3000)
 
         flow_add_msg3 = \
         testutils.flow_msg_create(self,packet_in3,ing_port = 1,action_list = [
@@ -1335,7 +1335,7 @@ class GroupFlowSelectAll(GroupTest):
 
         self.send_ctrl_exp_noerror(flow_add_msg3, 'flow add 3')
 
-        packet_in4 = testutils.simple_tcp_packet(tcp_sport=4000)
+        packet_in4 = testutils.simple_tcp_packet(tcp_src=4000)
 
         flow_add_msg4 = \
         testutils.flow_msg_create(self,packet_in4,ing_port = 1,action_list = [
