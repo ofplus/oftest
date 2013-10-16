@@ -10,7 +10,7 @@ from optparse import OptionParser
 
 parser = OptionParser(version="%prog 0.1")
 parser.set_defaults(port_count=4)
-parser.set_defaults(of_dir="../openflow")
+parser.set_defaults(of_dir="../ofsoftswitch13")
 parser.set_defaults(port=6633)
 parser.add_option("-n", "--port_count", type="int",
                   help="Number of veth pairs to create")
@@ -67,7 +67,7 @@ ofd_op = Popen([ofd, "-i", veths, "punix:/tmp/ofd"])
 print "Started ofdatapath on IFs " + veths + " with pid " + str(ofd_op.pid)
 
 call([ofp, "unix:/tmp/ofd", "tcp:127.0.0.1:" + str(options.port),
-      "--fail=closed", "--max-backoff=1"])
+      "--fail=closed", "--max-backoff=1", "-v"])
 
 ofd_op.kill()
 

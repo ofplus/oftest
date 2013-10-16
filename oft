@@ -36,7 +36,7 @@ import oftest
 from oftest import config
 import oftest.ofutils
 import oftest.help_formatter
-
+import oftest.HTMLTestRunner as HTMLTestRunner
 try:
     import scapy.all as scapy
 except:
@@ -71,19 +71,39 @@ config_default = {
     "test_dir"           : os.path.join(root_dir, "tests"),
 
     # Switch connection options
-    "controller_host"    : "0.0.0.0",  # For passive bind
+    "controller_host"    : "172.23.155.125",  # For passive bind
     "controller_port"    : 6633,
     "switch_ip"          : None,  # If not none, actively connect to switch
-    "platform"           : "eth",
-    "platform_args"      : None,
-    "platform_dir"       : os.path.join(root_dir, "platforms"),
-    "interfaces"         : [],
-    "openflow_version"   : "1.0",
+    "switch_port"	 : None,
+#    "platform"           : "eth",
+#    "platform_args"      : None,
+#    "platform_dir"       : os.path.join(root_dir, "platforms"),
+#    "interfaces"         : [],
+    "openflow_version"   : "1.3",
+
+    # CLI login options
+    "cli_host"           : "172.23.155.121",
+    "cli_port"           : "8000",
+    "cli_user"           : "tlaboma",
+    "cli_passwd"         : "admin",
+
+    # TL1 Login options
+    "tl1_host"           : "172.23.173.161",
+    "tl1_port"           : "6000",
+    "tl1_user"           : "Admin1",
+    "tl1_passwd"         : "tellabs1$",
+    "tl1_prompt"         : "TELLABS>",
+    "tl1_tid"            : "",
 
     # Logging options
-    "log_file"           : "oft.log",
+    "log_file"           : "Logs/oft.log",
+    "cli_log_file"       : "Logs/cli_logfile",
+    "tl1_log_file"       : "Logs/tl1_logfile",
     "log_append"         : False,
     "debug"              : "verbose",
+
+    # Report options
+    "report_file"        : "Reports/report.html",
 
     # Test behavior options
     "relax"              : False,
@@ -93,8 +113,17 @@ config_default = {
     "minsize"            : 0,
     "random_seed"        : None,
 
-    # Other configuration
+    # Test default configuration
     "port_map"           : {},
+    "switch-name"        : "test7100",
+    "switch-ipaddress"   : "172.23.173.161",
+    "switch-id"          : "7100",
+    "port-no1"           : "1/1/1",
+    "port-type1"         : "OCH",
+    "port-desc1"         : "ingress",
+    "port-no2"           : "2/3/3",
+    "port-type2"         : "OCH",
+    "port-desc2"         : "egress",
 }
 
 def config_setup():
@@ -166,13 +195,12 @@ prefixing them with the '^' character.
                       type="int", help="Port number to listen on (default %default)")
     group.add_option("-S", "--switch-ip", dest="switch_ip",
                       help="If set, actively connect to this switch by IP")
-    group.add_option("-P", "--platform", help="Platform module name (default %default)")
-    group.add_option("-a", "--platform-args", help="Custom arguments for the platform")
-    group.add_option("--platform-dir", type="string", help="Directory containing platform modules")
-    group.add_option("--interface", "-i", type="interface", dest="interfaces", metavar="INTERFACE", action="append",
-                     help="Specify a OpenFlow port number and the dataplane interface to use. May be given multiple times. Example: 1@eth1")
-    group.add_option("--of-version", "-V", dest="openflow_version", choices=["1.0", "1.1", "1.2"],
-                     help="OpenFlow version to use")
+    group.add_option("-O", "--switch-port", dest="switch_port", help="If set, actively connect to this switch by IP:Port")
+#    group.add_option("-P", "--platform", help="Platform module name (default %default)")
+#    group.add_option("-a", "--platform-args", help="Custom arguments for the platform")
+#    group.add_option("--platform-dir", type="string", help="Directory containing platform modules")
+#    group.add_option("--interface", "-i", type="interface", dest="interfaces", metavar="INTERFACE", action="append",
+#                     help="Specify a OpenFlow port number and the dataplane interface to use. May be given multiple times. Example: 1@eth1")
     parser.add_option_group(group)
 
     group = optparse.OptionGroup(parser, "Logging options")
@@ -278,9 +306,9 @@ def load_test_modules(config):
                         test._groups.append(modname)
 
                     # Put test in the standard test group
-                    if not test._disabled and not test._nonstandard:
-                        test._groups.append("standard")
-                        test._groups.append("all") # backwards compatibility
+#                    if not test._disabled and not test._nonstandard:
+#                        test._groups.append("standard")
+#                        test._groups.append("all") # backwards compatibility
 
                 result[modname] = (mod, tests)
 
@@ -361,6 +389,9 @@ elif config["openflow_version"] == "1.1":
 elif config["openflow_version"] == "1.2":
     import of12
     sys.modules["ofp"] = of12
+elif config["openflow_version"] == "1.3":
+    import of13
+    sys.modules["ofp"] = of13
 else:
     assert(False)
 
@@ -402,24 +433,24 @@ special switch configuration. These are not part of the "standard" test group.""
     print """\
 Tests marked with '!' are disabled because they are experimental, special-purpose,
 or are too long to be run normally. These are not part of the "standard" test
-group or their module's test group."""
+Tests are shown grouped by TestSuite."""
     print
     print "Tests marked (TP1) after name take --test-params including:"
     print "    'vid=N;strip_vlan=bool;add_vlan=bool'"
     print
-    print "Test List:"
+    print "TestSuite List:"
     for (modname, (mod, tests)) in test_modules.items():
         mod_count += 1
         desc = (mod.__doc__ or "No description").strip().split('\n')[0]
-        start_str = "  Module " + mod.__name__ + ": "
-        print start_str + _space_to(22, start_str) + desc
-        for (testname, test) in tests.items():
+        start_str = "  TestSuite " + mod.__name__ + ": "
+        print start_str + _space_to(32, start_str) + desc
+        for (testname, test) in sorted(tests.items()):
             try:
                 desc = (test.__doc__ or "").strip()
                 desc = desc.split('\n')[0]
             except:
                 desc = "No description"
-            groups = set(test._groups) - set(["all", "standard", modname])
+            groups = set(test._groups) - set([modname])
             all_groups.update(test._groups)
             if groups:
                 desc = "(%s) %s" % (",".join(groups), desc)
@@ -428,15 +459,15 @@ group or their module's test group."""
             start_str = " %s%s %s:" % (test._nonstandard and "*" or " ",
                                        test._disabled and "!" or " ",
                                        testname)
-            if len(start_str) > 22:
-                desc = "\n" + _space_to(22, "") + desc
-            print start_str + _space_to(22, start_str) + desc
+            if len(start_str) > 32:
+                desc = "\n" + _space_to(32, "") + desc
+            print start_str + _space_to(32, start_str) + desc
             test_count += 1
         print
-    print "%d modules shown with a total of %d tests" % \
+    print "%d testsuites shown with a total of %d tests" % \
         (mod_count, test_count)
     print
-    print "Test groups: %s" % (', '.join(sorted(all_groups)))
+    print "Testsuites: %s" % (', '.join(sorted(all_groups)))
 
     sys.exit(0)
 
@@ -445,7 +476,7 @@ test_modules = prune_tests(test_specs, test_modules, config["openflow_version"])
 # Check if test list is requested; display and exit if so
 if config["list_test_names"]:
     for (modname, (mod, tests)) in test_modules.items():
-        for (testname, test) in tests.items():
+        for (testname, test) in sorted(tests.items()):
             print "%s.%s" % (modname, testname)
     sys.exit(0)
 
@@ -454,33 +485,33 @@ if config["list_test_names"]:
 suite = unittest.TestSuite()
 
 for (modname, (mod, tests)) in test_modules.items():
-    for (testname, test) in tests.items():
+    for (testname, test) in sorted(tests.items()):
         suite.addTest(test())
 
 # Allow platforms to import each other
-sys.path.append(config["platform_dir"])
+#sys.path.append(config["platform_dir"])
 
 # Load the platform module
-platform_name = config["platform"]
-logging.info("Importing platform: " + platform_name)
-platform_mod = None
-try:
-    platform_mod = imp.load_module(platform_name, *imp.find_module(platform_name, [config["platform_dir"]]))
-except:
-    logging.warn("Failed to import " + platform_name + " platform module")
-    raise
+#platform_name = config["platform"]
+#logging.info("Importing platform: " + platform_name)
+#platform_mod = None
+#try:
+#    platform_mod = imp.load_module(platform_name, *imp.find_module(platform_name, [config["platform_dir"]]))
+#except:
+#    logging.warn("Failed to import " + platform_name + " platform module")
+#    raise
 
-try:
-    platform_mod.platform_config_update(config)
-except:
-    logging.warn("Could not run platform host configuration")
-    raise
+#try:
+#    platform_mod.platform_config_update(config)
+#except:
+#    logging.warn("Could not run platform host configuration")
+#    raise
 
-if not config["port_map"]:
-    die("Interface port map was not defined by the platform. Exiting.")
+#if not config["port_map"]:
+#    die("Interface port map was not defined by the platform. Exiting.")
 
 logging.debug("Configuration: " + str(config))
-logging.info("OF port map: " + str(config["port_map"]))
+#logging.info("OF port map: " + str(config["port_map"]))
 
 oftest.ofutils.default_timeout = config["default_timeout"]
 oftest.testutils.MINSIZE = config['minsize']
@@ -500,12 +531,19 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 if __name__ == "__main__":
     # Set up the dataplane
-    oftest.dataplane_instance = oftest.dataplane.DataPlane(config)
-    for of_port, ifname in config["port_map"].items():
-        oftest.dataplane_instance.port_add(ifname, of_port)
+ #   oftest.dataplane_instance = oftest.dataplane.DataPlane(config)
+ #   for of_port, ifname in config["port_map"].items():
+ #       oftest.dataplane_instance.port_add(ifname, of_port)
 
     logging.info("*** TEST RUN START: " + time.asctime())
     result = unittest.TextTestRunner(verbosity=2).run(suite)
+#    fp = file(config["report_file"], 'wb')
+#    runner = HTMLTestRunner.HTMLTestRunner(
+#                    stream=fp,
+#                    title='Tellabs 7100 OMA',
+#                    description='OMA Test Report'
+#                    )
+#    result =  runner.run(suite)
     if oftest.testutils.skipped_test_count > 0:
         ts = " tests"
         if oftest.testutils.skipped_test_count == 1: ts = " test"
@@ -514,11 +552,11 @@ if __name__ == "__main__":
     logging.info("*** TEST RUN END  : " + time.asctime())
 
     # Shutdown the dataplane
-    oftest.dataplane_instance.kill()
-    oftest.dataplane_instance = None
+ #   oftest.dataplane_instance.kill()
+ #   oftest.dataplane_instance = None
 
     if result.failures or result.errors:
-        # exit(1) hangs sometimes
+         #exit(1) hangs sometimes
         os._exit(1)
     if oftest.testutils.skipped_test_count > 0 and config["fail_skipped"]:
         os._exit(1)
